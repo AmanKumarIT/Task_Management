@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const instance = axios.create({
-  baseURL: "https://task-management-17b7.onrender.com"
+  baseURL: "https://task-management-iqde.onrender.com"
 });
 
 instance.interceptors.request.use((config) => {
