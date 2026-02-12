@@ -16,8 +16,8 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
-      "https://your-netlify-app.netlify.app"
+    //   "http://localhost:5173",
+      "https://taskmanage07.netlify.app"
     ],
     credentials: true
   })
