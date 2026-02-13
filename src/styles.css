@@ -98,17 +98,21 @@ body {
 }
 
 .logout-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
   background: crimson;
-  padding: 8px 15px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
+  border-radius: 8px;
   color: white;
-  transition: 0.3s;
+  cursor: pointer;
+  z-index: 1000;
+  transition: 0.3s ease;
 }
 
 .logout-btn:hover {
-  opacity: 0.8;
+  transform: scale(1.05);
 }
 
 .form-row {
@@ -459,4 +463,9 @@ body {
     padding: 10px 14px;
     font-size: 13px;
   }
+}
+
+select,
+option {
+  color: black;
 }

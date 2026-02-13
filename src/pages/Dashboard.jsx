@@ -43,32 +43,74 @@ function Dashboard() {
   };
 
   const deleteCategory = async (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this category and all its tasks?"
-    );
-    if (!confirmDelete) return;
+  const confirmDelete = window.confirm(
+    "Delete this category and all tasks?"
+  );
+  if (!confirmDelete) return;
 
+  setCategories(prev => prev.filter(c => c._id !== id));
+  setTasks(prev => prev.filter(t => t.category?._id !== id));
+
+  try {
     await axios.delete(`/categories/${id}`);
-    fetchCategories();
-    fetchTasks();
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   const handleAddTask = async () => {
-    if (!taskForm.title || !taskForm.category) return;
-    await axios.post("/tasks", taskForm);
-    setTaskForm({ title: "", description: "", deadline: "", category: "" });
-    fetchTasks();
+  if (!taskForm.title || !taskForm.category) return;
+
+  const tempTask = {
+    ...taskForm,
+    _id: Date.now(),
+    status: "pending",
+    category: categories.find(c => c._id === taskForm.category)
   };
+
+  setTasks(prev => [...prev, tempTask]); // instant UI update
+
+  try {
+    const { data } = await axios.post("/tasks", taskForm);
+    setTasks(prev =>
+      prev.map(t => (t._id === tempTask._id ? data : t))
+    );
+  } catch (err) {
+    console.error(err);
+  }
+
+  setTaskForm({ title: "", description: "", deadline: "", category: "" });
+};
+
 
   const markSuccess = async (id) => {
+  setTasks(prev =>
+    prev.map(task =>
+      task._id === id
+        ? { ...task, status: "success" }
+        : task
+    )
+  );
+
+  try {
     await axios.put(`/tasks/${id}/success`);
-    fetchTasks();
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   const markFailure = async (id) => {
+  setTasks(prev => prev.filter(t => t._id !== id)); // instant remove
+
+  try {
     await axios.put(`/tasks/${id}/failure`);
-    fetchTasks();
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   const startEdit = (task) => {
     setEditingTaskId(task._id);
@@ -76,10 +118,23 @@ function Dashboard() {
   };
 
   const saveEdit = async () => {
+  setTasks(prev =>
+    prev.map(task =>
+      task._id === editingTaskId
+        ? { ...task, ...editForm }
+        : task
+    )
+  );
+
+  setEditingTaskId(null);
+
+  try {
     await axios.put(`/tasks/${editingTaskId}`, editForm);
-    setEditingTaskId(null);
-    fetchTasks();
-  };
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   return (
     <div className="dashboard fade-in">
@@ -216,46 +271,6 @@ function Dashboard() {
       )}
     </div>
   ))}
-
-
-          {/* {tasks
-            .filter(task => task.category?._id === category._id)
-            .map(task => (
-              <div
-                key={task._id}
-                className={`task-card ${
-                  task.status === "success" ? "success-task" : ""
-                }`}
-              >
-                <div>
-                  <h4>{task.title}</h4>
-                  <p>{task.description}</p>
-
-                  {task.deadline && (
-                    <p className="deadline">
-                      Deadline:{" "}
-                      {new Date(task.deadline).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-
-                <div className="task-actions">
-                  {editingTaskId === task._id ? (
-                    <>
-                      <button onClick={saveEdit}>💾</button>
-                    </>
-                  ) : (
-                    <>
-                      {task.status !== "success" && (
-                        <button onClick={() => markSuccess(task._id)}>✔</button>
-                      )}
-                      <button onClick={() => markFailure(task._id)}>✖</button>
-                      <button onClick={() => startEdit(task)}>✏</button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))} */}
         </div>
       ))}
 
