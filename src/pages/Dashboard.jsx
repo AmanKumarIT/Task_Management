@@ -36,11 +36,26 @@ function Dashboard() {
   }, []);
 
   const handleAddCategory = async () => {
-    if (!newCategory.trim()) return;
-    await axios.post("/categories", { name: newCategory });
-    setNewCategory("");
-    fetchCategories();
-  };
+  if (!newCategory.trim()) return;
+
+  const exists = categories.some(
+    c => c.name.toLowerCase() === newCategory.toLowerCase()
+  );
+
+  if (exists) {
+    alert("Category already exists");
+    return;
+  }
+
+  await axios.post("/categories", { name: newCategory });
+  setNewCategory("");
+  fetchCategories();
+};
+
+const previousTitles = [
+  ...new Set(tasks.map(task => task.title))
+];
+
 
   const deleteCategory = async (id) => {
   const confirmDelete = window.confirm(
@@ -59,29 +74,46 @@ function Dashboard() {
 };
 
 
-  const handleAddTask = async () => {
+ const handleAddTask = async () => {
   if (!taskForm.title || !taskForm.category) return;
+
+  const selectedCategory = categories.find(
+    c => c._id === taskForm.category
+  );
+
+  const tempId = Date.now();
 
   const tempTask = {
     ...taskForm,
-    _id: Date.now(),
+    _id: tempId,
     status: "pending",
-    category: categories.find(c => c._id === taskForm.category)
+    category: selectedCategory
   };
 
-  setTasks(prev => [...prev, tempTask]); // instant UI update
+  // Optimistic update
+  setTasks(prev => [...prev, tempTask]);
+
+  setTaskForm({ title: "", description: "", deadline: "", category: "" });
 
   try {
     const { data } = await axios.post("/tasks", taskForm);
+
+    // Ensure category structure is consistent
+    const normalizedTask = {
+      ...data,
+      category: selectedCategory
+    };
+
     setTasks(prev =>
-      prev.map(t => (t._id === tempTask._id ? data : t))
+      prev.map(task =>
+        task._id === tempId ? normalizedTask : task
+      )
     );
   } catch (err) {
     console.error(err);
   }
-
-  setTaskForm({ title: "", description: "", deadline: "", category: "" });
 };
+
 
 
   const markSuccess = async (id) => {
@@ -111,6 +143,27 @@ function Dashboard() {
   }
 };
 
+const autoDetectCategory = (title) => {
+  const lowerTitle = title.toLowerCase();
+
+  for (let categoryName in autoTagKeywords) {
+    const keywords = autoTagKeywords[categoryName];
+
+    if (keywords.some(keyword => lowerTitle.includes(keyword))) {
+      const matchedCategory = categories.find(
+        c => c.name.toLowerCase() === categoryName.toLowerCase()
+      );
+
+      if (matchedCategory) {
+        setTaskForm(prev => ({
+          ...prev,
+          category: matchedCategory._id
+        }));
+      }
+    }
+  }
+};
+
 
   const startEdit = (task) => {
     setEditingTaskId(task._id);
@@ -135,6 +188,30 @@ function Dashboard() {
   }
 };
 
+const categorySuggestions = [
+  "Internships",
+  "Hackathons",
+  "Projects",
+  "Exams",
+  "Assignments",
+  "Personal Goals",
+  "Fitness",
+  "Learning",
+  "Job Applications",
+  "Freelance Work"
+];
+
+const autoTagKeywords = {
+  Internships: ["intern", "internship", "apply", "job"],
+  Hackathons: ["hackathon", "competition", "contest"],
+  Projects: ["project", "build", "develop"],
+  Exams: ["exam", "test", "quiz"],
+  Assignments: ["assignment", "homework"],
+  Fitness: ["gym", "workout", "run"],
+  Learning: ["learn", "course", "study"],
+  "Job Applications": ["resume", "cv", "interview"]
+};
+
 
   return (
     <div className="dashboard fade-in">
@@ -146,10 +223,18 @@ function Dashboard() {
       <div className="input-section">
         <input
           className="styled-input"
+          list="category-suggestions"
           placeholder="New Category"
           value={newCategory}
           onChange={(e) => setNewCategory(e.target.value)}
-        />
+         />
+         
+         <datalist id="category-suggestions">
+           {categorySuggestions.map((suggestion, index) => (
+             <option key={index} value={suggestion} />
+           ))}
+         </datalist>
+
         <button className="primary-btn" onClick={handleAddCategory}>
           Add Category
         </button>
@@ -157,11 +242,23 @@ function Dashboard() {
 
       <div className="input-section">
         <input
-          className="styled-input"
-          placeholder="Task Title"
-          value={taskForm.title}
-          onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-        />
+        className="styled-input"
+        list="task-title-suggestions"
+        placeholder="Task Title"
+        value={taskForm.title}
+        onChange={(e) => {
+          const value = e.target.value;
+          setTaskForm({ ...taskForm, title: value });
+          autoDetectCategory(value);
+        }}
+      />
+      <datalist id="task-title-suggestions">
+      {previousTitles.map((title, index) => (
+      <option key={index} value={title} />
+      ))}
+      </datalist>
+
+
         <input
           className="styled-input"
           placeholder="Description"
