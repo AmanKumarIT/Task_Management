@@ -417,9 +417,17 @@ function Dashboard() {
   }, []);
 
   const fetchCategories = async () => {
-    const { data } = await axios.get("/categories");
-    setCategories(data);
-  };
+  const { data } = await axios.get("/categories");
+  setCategories(data);
+
+  // Collapse all categories by default
+  const collapsedState = {};
+  data.forEach(cat => {
+    collapsedState[cat._id] = true;
+  });
+  setCollapsedCategories(collapsedState);
+};
+
 
   const fetchTasks = async () => {
     const { data } = await axios.get("/tasks");
@@ -585,12 +593,32 @@ function Dashboard() {
 
       {/* ===== ADD CATEGORY TOGGLE ===== */}
       <div className="category-add-container">
-        <button
-          className="circle-add-btn"
-          onClick={() => setShowCategoryInput(!showCategoryInput)}
-        >
-          +
-        </button>
+        {!showCategoryInput ? (
+    <button
+      className="add-category-btn"
+      onClick={() => setShowCategoryInput(true)}
+    >
+      Add New Category
+    </button>
+  ) : (
+    <div className="category-input-box">
+      <input
+        className="styled-input"
+        placeholder="Enter category name"
+        value={newCategory}
+        onChange={(e) => setNewCategory(e.target.value)}
+      />
+      <button className="confirm-btn" onClick={handleAddCategory}>
+        ✔
+      </button>
+      <button
+        className="cancel-btn"
+        onClick={() => setShowCategoryInput(false)}
+      >
+        ✖
+      </button>
+    </div>
+  )}
 
         {showCategoryInput && (
           <div className="category-input-box">
