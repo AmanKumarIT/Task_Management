@@ -559,7 +559,7 @@ function Dashboard() {
           className="circle-add-btn"
           onClick={() => setShowCategoryInput(!showCategoryInput)}
         >
-          +
+          Add Category 
         </button>
 
         {showCategoryInput && (
