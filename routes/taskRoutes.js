@@ -11,7 +11,7 @@ CREATE TASK
 */
 router.post("/", authMiddleware, async (req, res) => {
   try {
-    const { title, description, deadline, category } = req.body;
+    const { title, description, deadline, category, progress } = req.body;
 
     if (!title || !category) {
       return res.status(400).json({ message: "Title and category required" });
@@ -20,8 +20,9 @@ router.post("/", authMiddleware, async (req, res) => {
     const task = await Task.create({
       title,
       description,
-      deadline,
+      deadline: deadline || null, // supports datetime-local
       category,
+      progress: progress || 0,
       user: req.user.id
     });
 
@@ -42,8 +43,8 @@ router.get("/", authMiddleware, async (req, res) => {
     const tasks = await Task.find({
       user: req.user.id
     })
-    .populate("category", "name")
-    .sort({ createdAt: -1 });
+      .populate("category", "name")
+      .sort({ createdAt: -1 });
 
     res.json(tasks);
 
@@ -54,16 +55,36 @@ router.get("/", authMiddleware, async (req, res) => {
 
 /*
 ============================
-UPDATE TASK (Edit)
+UPDATE TASK (Edit + Progress)
 ============================
 */
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
+    const { title, description, deadline, progress } = req.body;
+
+    const updateFields = {};
+
+    if (title !== undefined) updateFields.title = title;
+    if (description !== undefined) updateFields.description = description;
+    if (deadline !== undefined) updateFields.deadline = deadline;
+    if (progress !== undefined) {
+      updateFields.progress = Math.min(100, Math.max(0, progress));
+
+      // Auto mark success if 100%
+      if (updateFields.progress === 100) {
+        updateFields.status = "success";
+      }
+    }
+
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id, user: req.user.id },
-      req.body,
-      { new: true }
+      updateFields,
+      { returnDocument: "after" }
     );
+
+    if (!updatedTask) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
     res.json(updatedTask);
 
@@ -81,8 +102,8 @@ router.put("/:id/success", authMiddleware, async (req, res) => {
   try {
     const task = await Task.findOneAndUpdate(
       { _id: req.params.id, user: req.user.id },
-      { status: "success" },
-      { new: true }
+      { status: "success", progress: 100 },
+      { returnDocument: "after" }
     );
 
     res.json(task);
@@ -105,7 +126,7 @@ router.put("/:id/failure", authMiddleware, async (req, res) => {
         status: "failure",
         failedAt: new Date()
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     res.json(task);
