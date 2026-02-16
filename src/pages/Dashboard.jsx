@@ -382,12 +382,17 @@
 // }
 
 // export default Dashboard;
+
+
+
 import { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../api/axios";
 import { AuthContext } from "../context/AuthContext";
 
 function Dashboard() {
+  const [darkMode, setDarkMode] = useState(false);
+
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -399,6 +404,7 @@ function Dashboard() {
   const [showCategoryInput, setShowCategoryInput] = useState(false);
 
   const [newCategory, setNewCategory] = useState("");
+
   const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
@@ -411,6 +417,15 @@ function Dashboard() {
     fetchCategories();
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+  if (darkMode) {
+    document.body.classList.add("dark");
+  } else {
+    document.body.classList.remove("dark");
+  }
+}, [darkMode]);
+
 
   const fetchCategories = async () => {
     const { data } = await axios.get("/categories");
@@ -470,7 +485,6 @@ function Dashboard() {
 
     try {
       const { data } = await axios.post("/tasks", taskForm);
-
       setTasks(prev =>
         prev.map(task =>
           task._id === tempId
@@ -483,7 +497,29 @@ function Dashboard() {
     }
   };
 
-  const updateProgress = (id, change) => {
+  const markSuccess = async (id) => {
+    setTasks(prev =>
+      prev.map(task =>
+        task._id === id ? { ...task, status: "success" } : task
+      )
+    );
+    try {
+      await axios.put(`/tasks/${id}/success`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const markFailure = async (id) => {
+    setTasks(prev => prev.filter(task => task._id !== id));
+    try {
+      await axios.put(`/tasks/${id}/failure`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const updateProgress = async (id, change) => {
     setTasks(prev =>
       prev.map(task =>
         task._id === id
@@ -497,6 +533,14 @@ function Dashboard() {
           : task
       )
     );
+
+    try {
+      await axios.put(`/tasks/${id}`, {
+        progress: tasks.find(t => t._id === id)?.progress
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const startEdit = (task) => {
@@ -512,7 +556,6 @@ function Dashboard() {
           : task
       )
     );
-
     setEditingTaskId(null);
 
     try {
@@ -522,8 +565,6 @@ function Dashboard() {
     }
   };
 
-  /* ================= NAVIGATION ================= */
-
   const scrollToCategory = (id) => {
     document
       .getElementById(`category-${id}`)
@@ -531,7 +572,14 @@ function Dashboard() {
   };
 
   return (
-    <div className="dashboard">
+    <div className="dashboard fade-in">
+      <button
+  className="theme-toggle"
+  onClick={() => setDarkMode(!darkMode)}
+>
+  {darkMode ? "☀ Light" : "🌙 Dark"}
+</button>
+
 
       {/* ===== NAVBAR ===== */}
       <div className="top-navbar">
@@ -553,13 +601,13 @@ function Dashboard() {
         </button>
       </div>
 
-      {/* ===== ADD CATEGORY BUTTON ===== */}
+      {/* ===== ADD CATEGORY TOGGLE ===== */}
       <div className="category-add-container">
         <button
           className="circle-add-btn"
           onClick={() => setShowCategoryInput(!showCategoryInput)}
         >
-          Add Category 
+          +
         </button>
 
         {showCategoryInput && (
@@ -633,7 +681,6 @@ function Dashboard() {
         >
           <div className="category-header">
             <h2>{category.name}</h2>
-
             <button
               className="collapse-btn"
               onClick={() => toggleCategory(category._id)}
@@ -646,44 +693,47 @@ function Dashboard() {
             tasks
               .filter(task => task.category?._id === category._id)
               .map(task => (
-                <div key={task._id} className="task-card">
+                <div
+                  key={task._id}
+                  className={`task-card ${
+                    task.status === "success" ? "success-task" : ""
+                  }`}
+                >
+                  {editingTaskId === task._id ? (
+                    <div className="edit-section responsive-edit">
+                      <input
+                        className="styled-input"
+                        value={editForm.title || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, title: e.target.value })
+                        }
+                      />
 
-                  <div className="task-main">
+                      <input
+                        className="styled-input"
+                        value={editForm.description || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, description: e.target.value })
+                        }
+                      />
 
-                    {editingTaskId === task._id ? (
-                      <div className="edit-section responsive-edit">
-                        <input
-                          className="styled-input"
-                          value={editForm.title || ""}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, title: e.target.value })
-                          }
-                        />
+                      <input
+                        type="datetime-local"
+                        className="styled-input"
+                        value={editForm.deadline || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, deadline: e.target.value })
+                        }
+                      />
 
-                        <input
-                          className="styled-input"
-                          value={editForm.description || ""}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, description: e.target.value })
-                          }
-                        />
-
-                        <input
-                          type="datetime-local"
-                          className="styled-input"
-                          value={editForm.deadline || ""}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, deadline: e.target.value })
-                          }
-                        />
-
-                        <div className="edit-buttons">
-                          <button onClick={saveEdit}>💾</button>
-                          <button onClick={() => setEditingTaskId(null)}>✖</button>
-                        </div>
+                      <div className="edit-buttons">
+                        <button onClick={saveEdit}>💾</button>
+                        <button onClick={() => setEditingTaskId(null)}>✖</button>
                       </div>
-                    ) : (
-                      <>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
                         <h4>{task.title}</h4>
                         <p>{task.description}</p>
 
@@ -693,7 +743,7 @@ function Dashboard() {
                           </p>
                         )}
 
-                        {/* ===== PROGRESS BAR ===== */}
+                        {/* PROGRESS BAR */}
                         <div className="progress-container">
                           <div
                             className="progress-bar"
@@ -702,22 +752,33 @@ function Dashboard() {
                         </div>
 
                         <div className="progress-controls">
-                          <button onClick={() => updateProgress(task._id, -10)}>
-                            –
-                          </button>
+                          <button onClick={() => updateProgress(task._id, -10)}>–</button>
                           <span>{task.progress || 0}%</span>
-                          <button onClick={() => updateProgress(task._id, 10)}>
-                            +
-                          </button>
+                          <button onClick={() => updateProgress(task._id, 10)}>+</button>
                         </div>
-                      </>
-                    )}
-                  </div>
+                      </div>
 
+                      {/* ACTION BUTTONS */}
+                      <div className="task-actions">
+                        {task.status !== "success" && (
+                          <button onClick={() => markSuccess(task._id)}>✔</button>
+                        )}
+                        <button onClick={() => markFailure(task._id)}>✖</button>
+                        <button onClick={() => startEdit(task)}>✏</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
         </div>
       ))}
+
+      <button
+        className="floating-btn"
+        onClick={() => navigate("/failed")}
+      >
+        Show Failed Tasks
+      </button>
     </div>
   );
 }
