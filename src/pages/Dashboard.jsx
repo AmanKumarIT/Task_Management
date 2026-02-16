@@ -391,8 +391,6 @@ import axios from "../api/axios";
 import { AuthContext } from "../context/AuthContext";
 
 function Dashboard() {
-  const [darkMode, setDarkMode] = useState(false);
-
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -417,15 +415,6 @@ function Dashboard() {
     fetchCategories();
     fetchTasks();
   }, []);
-
-  useEffect(() => {
-  if (darkMode) {
-    document.body.classList.add("dark");
-  } else {
-    document.body.classList.remove("dark");
-  }
-}, [darkMode]);
-
 
   const fetchCategories = async () => {
     const { data } = await axios.get("/categories");
@@ -573,13 +562,6 @@ function Dashboard() {
 
   return (
     <div className="dashboard fade-in">
-      <button
-  className="theme-toggle"
-  onClick={() => setDarkMode(!darkMode)}
->
-  {darkMode ? "☀ Light" : "🌙 Dark"}
-</button>
-
 
       {/* ===== NAVBAR ===== */}
       <div className="top-navbar">
