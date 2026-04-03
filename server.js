@@ -13,6 +13,10 @@ connectDB();
 
 const app = express();
 
+app.get('/', (req, res) => {
+  res.send('Server is running');
+});
+
 app.use(
   cors({
     origin: [
